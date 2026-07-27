@@ -2,6 +2,48 @@ from flask import Flask, jsonify
 
 app = Flask(__name__)
 
+products = [
+    {
+        "id": 1, 
+        "name": "Mouse",
+        "category": "Electronics",
+        "price": 29.99
+        
+    },
+    {
+
+        "id": 2, 
+        "name": "Keyboard",
+        "category": "Electronics",
+        "price": 79.99
+        
+    },
+    {
+
+        "id": 3, 
+        "name": "Headset",
+        "category": "Electronics",
+        "price": 99.99
+        
+    },
+    {
+    
+        "id": 4, 
+        "name": "Mousepad",
+        "category": "Electronics",
+        "price": 19.99
+        
+    },
+    {
+            
+        "id": 5, 
+        "name": "Microphone",
+        "category": "Electronics",
+        "price": 69.99
+    }
+]
+
+
 @app.get("/")
 def home():
     return "Hello World!"
@@ -46,4 +88,21 @@ def get_user(user_id):
         "message": "User not found"
     }), 404
 
-app.run()
+@app.get("/products")
+def get_products():
+    return jsonify(products)
+
+@app.get("/products/<int:product_id>")
+def get_product(product_id):
+    for product in products:
+        if product["id"] == product_id:
+            return jsonify(product)
+
+    return jsonify({
+        "message": "Product not found"
+    }), 404
+
+        
+
+if __name__ == "__main__":
+    app.run()

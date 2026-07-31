@@ -1,57 +1,26 @@
 from flask import Flask, jsonify, request
+import psycopg
 
 app = Flask(__name__)
-
-products = [
-    {
-        "id": 1,
-        "name": "Mouse",
-        "category": "Electronics",
-        "price": 29.99,
-    },
-    {
-        "id": 2,
-        "name": "Keyboard",
-        "category": "Electronics",
-        "price": 79.99,
-    },
-    {
-        "id": 3,
-        "name": "Headset",
-        "category": "Electronics",
-        "price": 99.99,
-    },
-    {
-        "id": 4,
-        "name": "Mousepad",
-        "category": "Electronics",
-        "price": 19.99,
-    },
-    {
-        "id": 5,
-        "name": "Microphone",
-        "category": "Electronics",
-        "price": 69.99,
-    },
-]
-
-users = [
-    {
-        "id": 1,
-        "name": "Filip",
-        "role": "Technical Support",
-    },
-    {
-        "id": 2,
-        "name": "Anna",
-        "role": "QA Engineer",
-    },
-]
+def get_connection():
+    return psycopg.connect(
+        host="localhost",
+        dbname="learning_db",
+        user="postgres",
+        password="Test123!",
+        port=5432,
+    )
 
 
 @app.get("/")
 def home():
     return "Hello World!"
+
+@app.get("/health")
+def health():
+    return jsonify({
+        "status": "ok"
+    })
 
 
 @app.get("/users")
@@ -70,16 +39,39 @@ def get_user(user_id):
 
 @app.get("/products")
 def get_products():
-    return jsonify(products)
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("SELECT * FROM products")
+
+    products_from_db = cursor.fetchall()
+
+    cursor.close()
+    connection.close()
+
+
+    return jsonify(products_from_db)
 
 
 @app.get("/products/<int:product_id>")
 def get_product(product_id):
-    for product in products:
-        if product["id"] == product_id:
-            return jsonify(product)
+    connection = get_connection()
+    cursor = connection.cursor()
 
-    return jsonify({"message": "Product not found"}), 404
+    cursor.execute(
+        "SELECT * FROM products WHERE id = %s",
+        (product_id,)
+    )
+
+    product = cursor.fetchone()
+
+    cursor.close()
+    connection.close()
+
+    if product is None:
+        return jsonify({"message": "Product not found"}), 404
+
+    return jsonify(product)
 
 
 @app.post("/products")
@@ -101,18 +93,29 @@ def post_product():
     if data["price"] <= 0:
         return jsonify({"message": "Field 'price' must be positive"}), 400
 
-    highest_id = 0
 
-    for product in products:
-        if product["id"] > highest_id:
-            highest_id = product["id"]
+    connection = get_connection()
+    cursor = connection.cursor()
 
-    data["id"] = highest_id + 1
+    cursor.execute(
+        """
+        INSERT INTO products (name, category, price)
+        VALUES (%s, %s, %s)
+        RETURNING *
+        """,
+        (
+            data["name"],
+            data["category"],
+            data["price"]
+        )
+    )
 
-    products.append(data)
+    new_product = cursor.fetchone()
 
-    return jsonify(data), 201
+    cursor.close()
+    connection.close()
 
+    return jsonify(new_product), 201
 
 @app.put("/products/<int:product_id>")
 def put_product(product_id):
@@ -133,27 +136,67 @@ def put_product(product_id):
     if data["price"] <= 0:
         return jsonify({"message": "Field 'price' must be positive"}), 400
 
-    for product in products:
-        if product["id"] == product_id:
-            product["name"] = data["name"]
-            product["category"] = data["category"]
-            product["price"] = data["price"]
 
-            return jsonify(product)
+    connection = get_connection()
+    cursor = connection.cursor()
 
-    return jsonify({"message": "Product not found"}), 404
+    cursor.execute(
+        """
+        UPDATE products
+        SET name = %s,
+            category = %s,
+            price = %s
+        WHERE id = %s
+        RETURNING *
+        """,
+        (
+            data["name"],
+            data["category"],
+            data["price"],
+            product_id
+        )
+    )
+
+    updated_product = cursor.fetchone()
+
+    cursor.close()
+    connection.close()
+
+
+    if updated_product is None:
+        return jsonify({"message": "Product not found"}), 404
+
+    return jsonify(updated_product)
 
 
 @app.delete("/products/<int:product_id>")
 def delete_product(product_id):
 
-    for product in products:
-        if product["id"] == product_id:
-            products.remove(product)
+    connection = get_connection()
+    cursor = connection.cursor()
 
-            return jsonify({"message": "Product deleted"})
+    cursor.execute(
+        """
+        DELETE FROM products
+        WHERE id = %s
+        RETURNING *
+        """,
+        (product_id,)
+    )
 
-    return jsonify({"message": "Product not found"}), 404
+    deleted_product = cursor.fetchone()
+
+    cursor.close()
+    connection.close()
+
+
+    if deleted_product is None:
+        return jsonify({"message": "Product not found"}), 404
+
+    return jsonify({
+        "message": "Product deleted",
+        "product": deleted_product
+    })
 
 
 if __name__ == "__main__":

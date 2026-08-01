@@ -1,16 +1,34 @@
 from flask import Flask, jsonify, request
 import psycopg
+import os
+from dotenv import load_dotenv
+
 
 app = Flask(__name__)
+
+load_dotenv()
+
 def get_connection():
     return psycopg.connect(
-        host="localhost",
-        dbname="learning_db",
-        user="postgres",
-        password="Test123!",
-        port=5432,
+        host=os.getenv("DB_HOST"),
+        dbname=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        port=os.getenv("DB_PORT"),
     )
 
+users = [
+    {
+        "id": 1,
+        "name": "Filip",
+        "role": "Technical Support",
+    },
+    {
+        "id": 2,
+        "name": "Anna",
+        "role": "QA Engineer",
+    },
+]
 
 @app.get("/")
 def home():
@@ -112,6 +130,8 @@ def post_product():
 
     new_product = cursor.fetchone()
 
+    connection.commit()
+
     cursor.close()
     connection.close()
 
@@ -159,6 +179,8 @@ def put_product(product_id):
 
     updated_product = cursor.fetchone()
 
+    connection.commit()
+
     cursor.close()
     connection.close()
 
@@ -185,6 +207,8 @@ def delete_product(product_id):
     )
 
     deleted_product = cursor.fetchone()
+
+    connection.commit()
 
     cursor.close()
     connection.close()

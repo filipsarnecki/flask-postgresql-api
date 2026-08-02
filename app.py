@@ -17,18 +17,6 @@ def get_connection():
         port=os.getenv("DB_PORT"),
     )
 
-users = [
-    {
-        "id": 1,
-        "name": "Filip",
-        "role": "Technical Support",
-    },
-    {
-        "id": 2,
-        "name": "Anna",
-        "role": "QA Engineer",
-    },
-]
 
 @app.get("/")
 def home():
@@ -43,16 +31,37 @@ def health():
 
 @app.get("/users")
 def get_users():
-    return jsonify(users)
+    connection = getion.connection()
+    cursor = connection.cursor()
+
+    cursor.execute("SELECT * FROM users")
+     
+    users_from_db = cursor.fetchall()
+     
+    cursor.close()
+    connection.close()
+
+    return jsonify(users_from_db)
 
 
 @app.get("/users/<int:user_id>")
 def get_user(user_id):
-    for user in users:
-        if user["id"] == user_id:
-            return jsonify(user)
+    connection = get_connection()
+    cursor = connection.cursor()
 
-    return jsonify({"message": "User not found"}), 404
+    cursor.execute(
+    "SELECT * FROM users WHERE id = %s",
+    (user_id,)
+)
+    user = cursor.fetchone()
+    
+    cursor.close()
+    connection.close()
+
+    if user is None:
+        return jsonify({"message": "User not found"}), 404
+
+    return jsonify(user)
 
 
 @app.get("/products")

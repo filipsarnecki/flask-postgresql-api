@@ -8,12 +8,12 @@ from flask_jwt_extended import (
     JWTManager,
     create_access_token,
     jwt_required,
-    get_jwt_identity,
 )
 
-app = Flask(__name__)
+load_dotenv()
 
-app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "super-secret-key")
+app = Flask(__name__)
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 jwt = JWTManager(app)
 
 logging.basicConfig(
@@ -21,8 +21,6 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-
-load_dotenv()
 
 
 def get_connection():
@@ -57,7 +55,7 @@ def register():
     username = data["username"]
     password = data["password"]
 
-    # Szyfrowanie/haszowanie hasła przed zapisem do bazy
+    
     hashed_password = generate_password_hash(password)
 
     connection = get_connection()
@@ -78,7 +76,7 @@ def register():
         logger.info(f"User registered successfully: {username} (id={new_user[0]})")
         return jsonify({"id": new_user[0], "username": new_user[1]}), 201
 
-    except Exception as e:
+    except psycopg.Error as e:
         connection.rollback()
         logger.error(f"Error during registration: {e}")
         return jsonify({"message": "User registration failed or user already exists"}), 400
@@ -108,12 +106,12 @@ def login():
     cursor.close()
     connection.close()
 
-    # Weryfikacja: czy użytkownik istnieje i czy podane hasło pasuje do hasza z bazy
+    
     if user is None or not check_password_hash(user[1], password):
         logger.warning(f"Failed login attempt for user: {username}")
         return jsonify({"message": "Invalid username or password"}), 401
 
-    # Wygenerowanie tokena JWT (identity ustawiamy na ID lub nazwę użytkownika)
+    
     access_token = create_access_token(identity=str(user[0]))
     logger.info(f"User logged in successfully: {username}")
 
@@ -121,6 +119,7 @@ def login():
 
 
 @app.get("/users")
+@jwt_required()
 def get_users():
     logger.info("Fetching all users")
     connection = get_connection()
@@ -137,6 +136,7 @@ def get_users():
 
 
 @app.get("/users/<int:user_id>")
+@jwt_required()
 def get_user(user_id):
     logger.info(f"Fetching user with id={user_id}")
     connection = get_connection()
@@ -204,9 +204,11 @@ def post_product():
 
     for field in required_fields:
         if field not in data:
+            logger.warning(f"Missing required field: {field}")
             return jsonify({"message": f"Field '{field}' is required"}), 400
 
     if not isinstance(data["price"], (int, float)):
+        logger.warning("Invalid product price format")
         return jsonify({"message": "Field 'price' must be a number"}), 400
 
     if data["price"] <= 0:
@@ -250,9 +252,11 @@ def put_product(product_id):
 
     for field in required_fields:
         if field not in data:
+            logger.warning(f"Missing required field: {field}")
             return jsonify({"message": f"Field '{field}' is required"}), 400
 
     if not isinstance(data["price"], (int, float)):
+        logger.warning("Invalid product price format")
         return jsonify({"message": "Field 'price' must be a number"}), 400
 
     if data["price"] <= 0:

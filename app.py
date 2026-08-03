@@ -13,6 +13,9 @@ from flask_jwt_extended import (
 
 app = Flask(__name__)
 
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "super-secret-key")
+jwt = JWTManager(app)
+
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
@@ -123,7 +126,7 @@ def get_users():
     connection = get_connection()
     cursor = connection.cursor()
 
-    cursor.execute("SELECT * FROM users")
+    cursor.execute("SELECT id, username FROM users")
 
     users_from_db = cursor.fetchall()
 
@@ -139,7 +142,7 @@ def get_user(user_id):
     connection = get_connection()
     cursor = connection.cursor()
 
-    cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+    cursor.execute("SELECT id, username FROM users WHERE id = %s", (user_id,))
     user = cursor.fetchone()
 
     cursor.close()
@@ -189,6 +192,7 @@ def get_product(product_id):
 
 
 @app.post("/products")
+@jwt_required()
 def post_product():
     data = request.get_json()
 
@@ -234,6 +238,7 @@ def post_product():
 
 
 @app.put("/products/<int:product_id>")
+@jwt_required()
 def put_product(product_id):
     data = request.get_json()
 
@@ -286,6 +291,7 @@ def put_product(product_id):
 
 
 @app.delete("/products/<int:product_id>")
+@jwt_required()
 def delete_product(product_id):
     logger.info(f"Deleting product with id={product_id}")
 

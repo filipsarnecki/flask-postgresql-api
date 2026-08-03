@@ -3,6 +3,13 @@ import psycopg
 import os
 import logging
 from dotenv import load_dotenv
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_jwt_extended import (
+    JWTManager,
+    create_access_token,
+    jwt_required,
+    get_jwt_identity,
+)
 
 app = Flask(__name__)
 
@@ -34,6 +41,80 @@ def home():
 def health():
     logger.info("Health check endpoint called")
     return jsonify({"status": "ok"})
+
+
+@app.post("/register")
+def register():
+    data = request.get_json()
+
+    if data is None or "username" not in data or "password" not in data:
+        logger.warning("Register failed: missing username or password")
+        return jsonify({"message": "Username and password are required"}), 400
+
+    username = data["username"]
+    password = data["password"]
+
+    # Szyfrowanie/haszowanie hasła przed zapisem do bazy
+    hashed_password = generate_password_hash(password)
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute(
+            """
+            INSERT INTO users (username, password)
+            VALUES (%s, %s)
+            RETURNING id, username
+            """,
+            (username, hashed_password),
+        )
+        new_user = cursor.fetchone()
+        connection.commit()
+
+        logger.info(f"User registered successfully: {username} (id={new_user[0]})")
+        return jsonify({"id": new_user[0], "username": new_user[1]}), 201
+
+    except Exception as e:
+        connection.rollback()
+        logger.error(f"Error during registration: {e}")
+        return jsonify({"message": "User registration failed or user already exists"}), 400
+
+    finally:
+        cursor.close()
+        connection.close()
+
+
+@app.post("/login")
+def login():
+    data = request.get_json()
+
+    if data is None or "username" not in data or "password" not in data:
+        logger.warning("Login failed: missing credentials in request")
+        return jsonify({"message": "Username and password are required"}), 400
+
+    username = data["username"]
+    password = data["password"]
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("SELECT id, password FROM users WHERE username = %s", (username,))
+    user = cursor.fetchone()
+
+    cursor.close()
+    connection.close()
+
+    # Weryfikacja: czy użytkownik istnieje i czy podane hasło pasuje do hasza z bazy
+    if user is None or not check_password_hash(user[1], password):
+        logger.warning(f"Failed login attempt for user: {username}")
+        return jsonify({"message": "Invalid username or password"}), 401
+
+    # Wygenerowanie tokena JWT (identity ustawiamy na ID lub nazwę użytkownika)
+    access_token = create_access_token(identity=str(user[0]))
+    logger.info(f"User logged in successfully: {username}")
+
+    return jsonify({"access_token": access_token}), 200
 
 
 @app.get("/users")

@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request
+from flasgger import Swagger
 import psycopg
 import os
 import logging
@@ -13,6 +14,24 @@ from flask_jwt_extended import (
 load_dotenv()
 
 app = Flask(__name__)
+
+template = {
+    "swagger": "2.0",
+    "info": {
+        "title": "Products & Users API",
+        "description": "API z PostgreSQL, JWT oraz dokumentacją Swagger",
+        "version": "1.0.0",
+    },
+    "securityDefinitions": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "Wpisz token w formacie: Bearer <TWÓJ_TOKEN_JWT>",
+        }
+    },
+}
+swagger = Swagger(app, template=template)
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 jwt = JWTManager(app)
 
@@ -62,6 +81,30 @@ def health():
 
 @app.post("/register")
 def register():
+    """
+    Register a new user.
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            username:
+              type: string
+              example: john_doe
+            password:
+              type: string
+              example: SecretPassword123
+    responses:
+      201:
+        description: User registered successfully. Returns user object.
+      400:
+        description: Username and password are required OR registration failed / user exists.
+    """
     data = request.get_json()
 
     if data is None or "username" not in data or "password" not in data:
@@ -106,6 +149,32 @@ def register():
 
 @app.post("/login")
 def login():
+    """
+    Authenticate user and retrieve access token.
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            username:
+              type: string
+              example: john_doe
+            password:
+              type: string
+              example: SecretPassword123
+    responses:
+      200:
+        description: User logged in successfully. Returns JWT access_token.
+      400:
+        description: Missing credentials in request.
+      401:
+        description: Invalid username or password.
+    """
     data = request.get_json()
 
     if data is None or "username" not in data or "password" not in data:
@@ -137,6 +206,19 @@ def login():
 @app.get("/users")
 @jwt_required()
 def get_users():
+    """
+    Get all registered users.
+    ---
+    tags:
+      - Users
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: List of all users.
+      401:
+        description: Missing or invalid JWT token.
+    """
     logger.info("Fetching all users")
     connection = get_connection()
     cursor = connection.cursor()
@@ -159,6 +241,27 @@ def get_users():
 @app.get("/users/<int:user_id>")
 @jwt_required()
 def get_user(user_id):
+    """
+    Get user details by ID.
+    ---
+    tags:
+      - Users
+    security:
+      - Bearer: []
+    parameters:
+      - in: path
+        name: user_id
+        type: integer
+        required: true
+        description: Numeric ID of the user.
+    responses:
+      200:
+        description: User details object.
+      401:
+        description: Missing or invalid JWT token.
+      404:
+        description: User not found.
+    """
     logger.info(f"Fetching user with id={user_id}")
     connection = get_connection()
     cursor = connection.cursor()
@@ -178,6 +281,15 @@ def get_user(user_id):
 
 @app.get("/products")
 def get_products():
+    """
+    Get all products.
+    ---
+    tags:
+      - Products
+    responses:
+      200:
+        description: List of all products.
+    """
     logger.info("Fetching all products")
     connection = get_connection()
     cursor = connection.cursor()
@@ -199,6 +311,23 @@ def get_products():
 
 @app.get("/products/<int:product_id>")
 def get_product(product_id):
+    """
+    Get a single product by ID.
+    ---
+    tags:
+      - Products
+    parameters:
+      - in: path
+        name: product_id
+        type: integer
+        required: true
+        description: Numeric ID of the product.
+    responses:
+      200:
+        description: Product details object.
+      404:
+        description: Product not found.
+    """
     logger.info(f"Fetching product with id={product_id}")
     connection = get_connection()
     cursor = connection.cursor()
@@ -220,6 +349,37 @@ def get_product(product_id):
 @app.post("/products")
 @jwt_required()
 def post_product():
+    """
+    Create a new product.
+    ---
+    tags:
+      - Products
+    security:
+      - Bearer: []
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              example: Keyboard
+            category:
+              type: string
+              example: Electronics
+            price:
+              type: number
+              example: 199.99
+    responses:
+      201:
+        description: Product created successfully. Returns the new product.
+      400:
+        description: Request body is not JSON, missing required fields, or invalid price.
+      401:
+        description: Missing or invalid JWT token.
+    """
     data = request.get_json()
 
     if data is None:
@@ -268,6 +428,44 @@ def post_product():
 @app.put("/products/<int:product_id>")
 @jwt_required()
 def put_product(product_id):
+    """
+    Update an existing product by ID.
+    ---
+    tags:
+      - Products
+    security:
+      - Bearer: []
+    parameters:
+      - in: path
+        name: product_id
+        type: integer
+        required: true
+        description: Numeric ID of the product to update.
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              example: Wireless Keyboard
+            category:
+              type: string
+              example: Electronics
+            price:
+              type: number
+              example: 249.99
+    responses:
+      200:
+        description: Product updated successfully. Returns updated product.
+      400:
+        description: Request body is not JSON, missing fields, or invalid price.
+      401:
+        description: Missing or invalid JWT token.
+      404:
+        description: Product not found.
+    """
     data = request.get_json()
 
     if data is None:
@@ -323,6 +521,27 @@ def put_product(product_id):
 @app.delete("/products/<int:product_id>")
 @jwt_required()
 def delete_product(product_id):
+    """
+    Delete a product by ID.
+    ---
+    tags:
+      - Products
+    security:
+      - Bearer: []
+    parameters:
+      - in: path
+        name: product_id
+        type: integer
+        required: true
+        description: Numeric ID of the product to delete.
+    responses:
+      200:
+        description: Product deleted. Returns success message and deleted object.
+      401:
+        description: Missing or invalid JWT token.
+      404:
+        description: Product not found.
+    """
     logger.info(f"Deleting product with id={product_id}")
 
     connection = get_connection()

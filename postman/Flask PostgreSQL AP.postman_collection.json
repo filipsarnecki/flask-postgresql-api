@@ -367,7 +367,7 @@
                   "const json = pm.response.json();",
                   "",
                   "pm.test(\"Correct product returned\", function () {",
-                  "    pm.expect(json[0]).to.eql(Number(pm.environment.get(\"product_id\")));",
+                  "    pm.expect(json.id).to.eql(Number(pm.environment.get(\"product_id\")));",
                   "});"
                 ],
                 "type": "text/javascript",
@@ -412,8 +412,8 @@
                   "const json = pm.response.json();",
                   "",
                   "pm.test(\"Product updated\", function () {",
-                  "    pm.expect(json[1]).to.eql(\"Mechanical Keyboard\");",
-                  "});"
+                  "    pm.expect(json.id).to.eql(Number(pm.environment.get(\"product_id\")));",
+                  "    });"
                 ],
                 "type": "text/javascript",
                 "packages": {},

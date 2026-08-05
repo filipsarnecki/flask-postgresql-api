@@ -32,12 +32,20 @@ def get_connection():
         port=os.getenv("DB_PORT"),
     )
 
+
 def product_to_dict(product):
     return {
         "id": product[0],
         "name": product[1],
         "category": product[2],
         "price": product[3],
+    }
+
+
+def user_to_dict(user):
+    return {
+        "id": user[0],
+        "username": user[1],
     }
 
 
@@ -63,7 +71,6 @@ def register():
     username = data["username"]
     password = data["password"]
 
-    
     hashed_password = generate_password_hash(password)
 
     connection = get_connection()
@@ -87,7 +94,10 @@ def register():
     except psycopg.Error as e:
         connection.rollback()
         logger.error(f"Error during registration: {e}")
-        return jsonify({"message": "User registration failed or user already exists"}), 400
+        return (
+            jsonify({"message": "User registration failed or user already exists"}),
+            400,
+        )
 
     finally:
         cursor.close()
@@ -114,12 +124,10 @@ def login():
     cursor.close()
     connection.close()
 
-    
     if user is None or not check_password_hash(user[1], password):
         logger.warning(f"Failed login attempt for user: {username}")
         return jsonify({"message": "Invalid username or password"}), 401
 
-    
     access_token = create_access_token(identity=str(user[0]))
     logger.info(f"User logged in successfully: {username}")
 
@@ -140,7 +148,12 @@ def get_users():
     cursor.close()
     connection.close()
 
-    return jsonify(users_from_db)
+    users = []
+
+    for user in users_from_db:
+        users.append(user_to_dict(user))
+
+    return jsonify(users)
 
 
 @app.get("/users/<int:user_id>")
@@ -160,7 +173,7 @@ def get_user(user_id):
         logger.warning(f"User with id={user_id} not found")
         return jsonify({"message": "User not found"}), 404
 
-    return jsonify(user)
+    return jsonify(user_to_dict(user))
 
 
 @app.get("/products")
@@ -176,7 +189,12 @@ def get_products():
     cursor.close()
     connection.close()
 
-    return jsonify(products_from_db)
+    products = []
+
+    for product in products_from_db:
+        products.append(product_to_dict(product))
+
+    return jsonify(products)
 
 
 @app.get("/products/<int:product_id>")
@@ -196,7 +214,7 @@ def get_product(product_id):
         logger.warning(f"Product with id={product_id} not found")
         return jsonify({"message": "Product not found"}), 404
 
-    return jsonify(product)
+    return jsonify(product_to_dict(product))
 
 
 @app.post("/products")
@@ -299,7 +317,7 @@ def put_product(product_id):
 
     logger.info(f"Product updated with id={product_id}")
 
-    return jsonify(updated_product)
+    return jsonify(product_to_dict(updated_product))
 
 
 @app.delete("/products/<int:product_id>")
@@ -331,7 +349,9 @@ def delete_product(product_id):
         return jsonify({"message": "Product not found"}), 404
     logger.info(f"Product deleted with id={product_id}")
 
-    return jsonify({"message": "Product deleted", "product": deleted_product})
+    return jsonify(
+        {"message": "Product deleted", "product": product_to_dict(deleted_product)}
+    )
 
 
 if __name__ == "__main__":

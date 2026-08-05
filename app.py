@@ -32,6 +32,14 @@ def get_connection():
         port=os.getenv("DB_PORT"),
     )
 
+def product_to_dict(product):
+    return {
+        "id": product[0],
+        "name": product[1],
+        "category": product[2],
+        "price": product[3],
+    }
+
 
 @app.get("/")
 def home():
@@ -236,7 +244,7 @@ def post_product():
     cursor.close()
     connection.close()
 
-    return jsonify(new_product), 201
+    return jsonify(product_to_dict(new_product)), 201
 
 
 @app.put("/products/<int:product_id>")

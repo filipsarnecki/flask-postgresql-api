@@ -19,7 +19,7 @@ template = {
     "swagger": "2.0",
     "info": {
         "title": "Products & Users API",
-        "description": "API z PostgreSQL, JWT oraz dokumentacją Swagger",
+        "description": "REST API with PostgreSQL, JWT authentication and Swagger documentation",
         "version": "1.0.0",
     },
     "securityDefinitions": {
@@ -27,7 +27,7 @@ template = {
             "type": "apiKey",
             "name": "Authorization",
             "in": "header",
-            "description": "Wpisz token w formacie: Bearer <TWÓJ_TOKEN_JWT>",
+            "description": "Enter the token in the following format: Bearer <TWÓJ_TOKEN_JWT>",
         }
     },
 }

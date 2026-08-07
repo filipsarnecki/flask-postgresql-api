@@ -528,7 +528,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"filip\",\n  \"password\": \"test123\"\n}",
+              "raw": "{\n  \"username\": \"{{test_username}}\",\n  \"password\": \"test123\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -575,7 +575,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"filip\",\n  \"password\": \"test123*\"\n}",
+              "raw": "{\n  \"username\": \"{{test_username}}\",\n  \"password\": \"test123*\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

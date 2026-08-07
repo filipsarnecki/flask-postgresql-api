@@ -70,11 +70,11 @@ The Postman collection is designed to be repeatable, with test scripts handling 
 
 ## Screenshots
 
-### Swagger UI Documentation (`/apidocs`)
-![Swagger UI](docs/images/swagger-ui.png)
-
 ### Automated Test Suite Results (Postman)
 ![Postman Collection Runner](docs/images/postman-collection.png)
+
+### Swagger UI Documentation (`/apidocs`)
+![Swagger UI](docs/images/swagger-ui.png)
 
 ---
 
